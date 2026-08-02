@@ -216,3 +216,23 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- Node / React (frontend) ----
+node_modules/
+frontend/dist/
+frontend/build/
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+
+# ---- Project-specific ----
+*.db
+*.sqlite
+*.sqlite3
+ml/models/*.pkl
+!ml/models/.gitkeep
+.env

@@ -1,0 +1,23 @@
+name: Daily Mandi Data Pipeline
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # runs daily — adjust time as needed (UTC)
+  workflow_dispatch: {}     # allows manual trigger from the Actions tab
+
+jobs:
+  ingest-and-retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Fetch today's live prices
+        env:
+          AGMARKNET_API_KEY: ${{ secrets.AGMARKNET_API_KEY }}
+        run: python data_pipeline/fetch_agmarknet.py
+      - name: Retrain models
+        run: python ml/retrain.py
