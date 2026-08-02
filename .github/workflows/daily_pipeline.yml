@@ -1,9 +1,14 @@
 name: Daily Mandi Data Pipeline
 
+# NOTE: the scheduled (cron) trigger is intentionally commented out until
+# Phase 1 (real fetch_agmarknet.py + retrain.py implementation + the
+# AGMARKNET_API_KEY secret) is actually done. Right now this workflow only
+# runs when someone manually triggers it from the Actions tab, so it won't
+# spam failed nightly runs on stub code.
 on:
-  schedule:
-    - cron: "0 2 * * *"   # runs daily — adjust time as needed (UTC)
-  workflow_dispatch: {}     # allows manual trigger from the Actions tab
+  # schedule:
+  #   - cron: "0 2 * * *"   # UN-COMMENT this once Phase 1 is complete
+  workflow_dispatch: {}      # manual trigger only, for now
 
 jobs:
   ingest-and-retrain:
