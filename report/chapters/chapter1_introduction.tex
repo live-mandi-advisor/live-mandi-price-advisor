@@ -1,0 +1,71 @@
+\chapter{Introduction}
+
+\section{General}
+Agricultural markets (\textit{mandis}) in India are numerous, fragmented,
+and geographically dispersed. A single commodity can trade at meaningfully
+different prices at mandis only a few hours apart on the same day, yet the
+individual farmer -- especially small and marginal farmers who form the
+majority of India's agricultural workforce -- typically has no easy way to
+compare these prices before deciding where and when to sell. This
+information asymmetry, combined with limited on-farm storage capacity,
+frequently forces farmers into \textit{distress selling}: selling
+immediately after harvest, at the point of lowest leverage, often to
+intermediaries who pay below the prevailing market rate.
+
+This project, the \textbf{\ProjectTitle}, addresses this gap directly. It
+combines publicly available government price data (Agmarknet, under the
+Ministry of Agriculture \& Farmers Welfare, Government of India) with a
+time-series forecasting pipeline and a farmer-facing web application to
+give users a live, comparative, and forward-looking view of mandi prices
+for the crops and markets relevant to them.
+
+\section{Problem Statement}
+Given the absence of an accessible, forecast-aware, mandi-comparison tool
+for Indian farmers, this project aims to answer the following question:
+\textit{Can publicly available agricultural market data be used to build a
+system that (a) forecasts short-term commodity prices at the level of
+individual mandis, and (b) presents this information, along with an
+actionable Sell/Hold recommendation, through an interface usable by a
+non-technical farmer?}
+
+\section{Objectives}
+The specific objectives of this project are:
+\begin{enumerate}[label=\arabic*.]
+    \item To identify and consolidate reliable historical and live sources
+    of Indian agricultural commodity price data (Agmarknet, CEDA Agri
+    Market Data).
+    \item To design a data pipeline that ingests live daily price data on
+    an ongoing basis while maintaining sufficient historical depth for
+    time-series modelling.
+    \item To build a short-term price forecasting model at the granularity
+    of individual (commodity, mandi) pairs, rather than a blurred
+    state- or commodity-level average, so that local price variation --
+    the core value proposition of the system -- is preserved.
+    \item To translate model output into a simple, actionable Sell/Hold
+    signal that a farmer can interpret without statistical background.
+    \item To design and implement a two-page web application: a
+    general dashboard (state-wise price overview) and an interactive
+    prediction page allowing state- and crop-level drill-down to
+    individual mandi comparisons.
+    \item To evaluate the forecasting approach against a naive baseline
+    and document the comparison for academic assessment.
+\end{enumerate}
+
+\section{Scope of the Project}
+The system, in its current planned scope, covers 2--3 Indian states and
+the top six most-consistently-reported commodities per state (selected
+using actual historical reporting-frequency data rather than assumption),
+across roughly 15--20 mandis per state. This scope is intentionally
+bounded for a single academic-year capstone project; the architecture is
+designed to extend to additional states/commodities without structural
+change (see Chapter~3).
+
+\section{Organization of the Report}
+Chapter~2 reviews existing approaches to agricultural price prediction and
+related student/academic projects, and identifies the gap this project
+addresses. Chapter~3 presents the proposed system architecture, data
+pipeline, machine learning design, and technology stack, along with a
+feasibility discussion. Chapter~4 will present implementation results and
+evaluation (populated in subsequent review periods as development
+progresses). Chapter~5 presents the current work plan, timeline, and
+identifies the project's present limitations and future scope.

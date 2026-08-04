@@ -1,0 +1,42 @@
+\chapter{Results, Analysis \& Discussions}
+
+\section{Status as of \ReviewLabel}
+At the time of this review, the project is in the architecture and
+scaffolding stage: the system design (Chapter~3), data pipeline strategy,
+and technology stack have been finalized, and the project's version-control
+repository has been structured accordingly (data pipeline, machine
+learning, backend, and frontend modules, each with defined interfaces).
+Implementation of the live data pipeline, model training, and the
+frontend application is in progress and had not yet produced evaluable
+output at the time of this submission.
+
+% TODO (Review 2 onward): replace this chapter's content with actual
+% results as they become available -- e.g.:
+%   - Sample of cleaned, backfilled historical data (row counts, date
+%     coverage per state/commodity)
+%   - Prophet vs. baseline MAE comparison table, per commodity/mandi
+%   - Screenshots of the working dashboard / prediction page
+%   - Any deviations from the Chapter 3 design and why
+
+\section{Preliminary Data Analysis}
+A sample single-day national Agmarknet export (9{,}584 records across 25
+states, 271 districts, 642 markets, and 188 commodities) was analyzed to
+validate assumptions made during architecture design. This confirmed, in
+particular: (a) the field-name encoding artefact described in
+Section~3.2.3 is present in bulk exports and not only the API preview;
+(b) the variety/grade duplication pattern occurs in practice (e.g.\ two
+distinct modal prices recorded for \textit{Arecanut} at the same market
+on the same day); and (c) commodity reporting coverage varies
+meaningfully by state -- for example, an originally assumed commodity
+(Soyabean) had zero recorded rows for Maharashtra on the sampled day,
+which directly motivated the shift to a data-driven, per-state top-crop
+selection methodology (Section~3.1) rather than an assumed fixed crop
+list.
+
+\section{Discussion}
+This preliminary analysis illustrates the value of validating
+architectural assumptions against real data before implementation begins
+-- several design decisions in Chapter~3 (state-based data organization,
+data-driven crop selection, variety-deduplication logic) were refined
+directly as a result of this analysis rather than decided purely from
+documentation.

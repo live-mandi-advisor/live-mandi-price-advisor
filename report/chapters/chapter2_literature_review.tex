@@ -1,0 +1,66 @@
+\chapter{Literature Review}
+
+\section{General}
+This chapter surveys existing work and commonly proposed student projects
+in agricultural machine learning, identifies which problem framings are
+already saturated, and positions the present project relative to that
+landscape.
+
+\section{Commonly Proposed Approaches (and their limitations)}
+A survey of recent student-project repositories, dataset platforms, and
+government-hackathon problem statements shows that a small number of
+problem framings recur very frequently in the "agricultural ML" space:
+crop yield prediction and crop-disease image classification (typically
+using the PlantVillage or similar Kaggle datasets), and generic
+price-prediction notebooks that report an accuracy or error metric
+without any accompanying usable interface. These approaches are
+well-documented and technically approachable, but by the same token are
+heavily repeated -- reviewers and evaluators encounter near-identical
+submissions regularly, which reduces their value as a demonstration of
+original problem-solving.
+
+Two structural weaknesses recur across this literature:
+\begin{itemize}
+    \item \textbf{Granularity mismatch.} Many price/yield-prediction
+    projects operate at a state or district level, which can mask
+    meaningful local variation -- the same crop can differ significantly
+    in price between two mandis in the same state on the same day. A
+    model trained at too coarse a granularity cannot support a genuinely
+    local, actionable recommendation.
+    \item \textbf{Missing "last mile".} Most academic implementations stop
+    at a trained model and a reported accuracy figure, without an
+    interface that would let a non-technical end user (a farmer, in this
+    domain) actually act on the model's output.
+\end{itemize}
+
+\section{Data Sources for Indian Agricultural Prices}
+The Government of India's \textbf{Agmarknet} portal (under data.gov.in)
+publishes daily wholesale/modal commodity prices from regulated mandis
+across the country, and is the primary live data source used by
+government and academic work in this space alike. For historical depth,
+the \textbf{CEDA Agri Market Data} initiative (Centre for Economic Data
+and Analysis, Ashoka University) compiles and republishes the same
+underlying Agmarknet data with a more research-friendly export interface,
+and is used in this project as the primary historical backfill source for
+its academic citability.
+
+\section{Forecasting Methodology}
+Time-series forecasting of agricultural commodity prices has been
+approached in the literature using classical statistical methods (ARIMA
+and its variants), and more recently using additive decomposition models
+such as \textbf{Facebook Prophet}, which explicitly models trend and
+seasonal components and is well-suited to the kind of small,
+per-market datasets this project works with, without requiring extensive
+hyperparameter tuning. This project adopts Prophet as its primary
+forecasting model, benchmarked against a naive/moving-average baseline
+(see Chapter~3).
+
+\section{Positioning of the Present Work}
+Relative to the reviewed literature, this project is distinguished by:
+(a) forecasting at the individual (commodity, mandi) level rather than a
+coarser aggregate, preserving the local price variation that is the
+actual decision-relevant signal for a farmer; (b) combining a live,
+continuously updating data pipeline with a one-time historical backfill,
+rather than a single static training run; and (c) delivering the model's
+output through a complete, usable web interface rather than stopping at
+a notebook-level result.

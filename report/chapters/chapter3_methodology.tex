@@ -1,0 +1,154 @@
+\chapter{Theory, Methodology, Materials \& Methods}
+
+\section{Proposed System Architecture}
+The system is organized into five stages: historical data backfill, live
+daily ingestion, model training/retraining, a backend API layer, and a
+two-page frontend application. Figure~\ref{fig:architecture} illustrates
+the overall data and control flow.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners, minimum width=3.4cm, minimum height=1cm, align=center, font=\small},
+    arr/.style={-Latex, thick}
+]
+\node[box] (ceda) at (0,6) {CEDA Historical\\Backfill (one-time)};
+\node[box] (live) at (5,6) {Agmarknet Live API\\(daily)};
+\node[box] (db) at (2.5,4.5) {State-partitioned\\Database};
+\node[box] (train) at (2.5,3) {Retraining: one\\Prophet model per\\(commodity, mandi)};
+\node[box] (registry) at (2.5,1.5) {Model Registry};
+\node[box] (api) at (2.5,0) {FastAPI Backend\\(+ state aggregation)};
+\node[box] (frontend) at (2.5,-1.5) {React Frontend\\(Home + Prediction pages)};
+
+\draw[arr] (ceda) -- (db);
+\draw[arr] (live) -- (db);
+\draw[arr] (db) -- (train);
+\draw[arr] (train) -- (registry);
+\draw[arr] (registry) -- (api);
+\draw[arr] (api) -- (frontend);
+\end{tikzpicture}
+\caption{Proposed system architecture: data sources, storage, model
+training/registry, API, and frontend.}
+\label{fig:architecture}
+\end{figure}
+
+An important design decision, discussed further in Section~3.4, is that
+\textbf{storage and the user interface are organized by state}, while the
+\textbf{forecasting model itself remains at (commodity, mandi)
+granularity} -- state-level views are computed as an aggregation over
+underlying mandi-level forecasts rather than being separately modelled.
+
+\section{Data Pipeline}
+\subsection{Historical Backfill}
+Prophet requires several months of history to reliably detect weekly and
+yearly seasonality; this cannot be obtained from live daily collection
+alone within a single academic year. The system therefore performs a
+one-time historical backfill from CEDA Agri Market Data before daily live
+collection begins, with the larger Kaggle "Daily Market Prices of
+Commodity India (2001--2026)" dataset available as a cross-check/backup
+source.
+
+\subsection{Live Ingestion}
+A scheduled job (GitHub Actions cron) fetches the previous day's records
+from the Agmarknet API (resource ID
+\texttt{9ef84268-d588-465a-a308-a864a43d0070}) and appends them to the
+same state-partitioned tables used by the historical backfill, so that
+the model's training set grows continuously.
+
+\subsection{Data Cleaning Considerations}
+Preliminary analysis of a sample Agmarknet export surfaced two practical
+issues that the ingestion pipeline must handle:
+\begin{itemize}
+    \item \textbf{Field-name encoding.} Exported column names contain an
+    XML-encoding artefact (e.g.\ \texttt{Min\_x0020\_Price}) rather than
+    the clean \texttt{min\_price} field name returned by the JSON API;
+    the pipeline must normalize this during ingestion.
+    \item \textbf{Variety/grade duplication.} A single (market, commodity,
+    date) combination can have multiple rows if more than one
+    variety/grade of that commodity was traded that day (confirmed
+    empirically, e.g. multiple \textit{Arecanut} rows at the same market
+    on the same day with different modal prices). The pipeline filters to
+    a consistent variety/grade per (commodity, mandi) series before
+    constructing the Prophet training set.
+\end{itemize}
+
+\section{Machine Learning Design}
+\subsection{Task Formulation}
+The core forecasting task is \textbf{time-series regression}, not
+classification: the model predicts a continuous value (the next-period
+modal price), using \texttt{modal\_price} as the target variable (the
+price at which the largest transacted quantity occurred that day, per
+Agmarknet convention) rather than the min/max range. The farmer-facing
+Sell/Hold/Stable label is a rule-based decision layer applied on top of
+the continuous forecast, not a directly trained classifier -- this
+preserves the underlying magnitude/confidence information that a bare
+label would discard, and mirrors how real trading/advisory systems are
+typically structured.
+
+\subsection{Model Choice}
+\textbf{Facebook Prophet} (an additive decomposition model: trend +
+weekly seasonality + yearly seasonality) is used as the primary
+forecasting model, trained independently per (commodity, mandi) pair. A
+naive/moving-average baseline is trained alongside it for comparison,
+evaluated using Mean Absolute Error (MAE), to provide an evidence-based
+justification for the modelling choice rather than an assumed one.
+
+\subsection{State-Level Aggregation (not a separate model)}
+The Prediction page's state-level summary view ("select a state, see its
+top 6 crops with percentage change") is computed by aggregating the
+outputs of the existing per-mandi models -- e.g.\ averaging the forecast
+percentage change across all mandis reporting a given commodity within
+the selected state -- rather than training a new, coarser model. This
+preserves per-mandi precision for the underlying comparison feature while
+still providing a fast, simple state-level overview.
+
+\section{Technology Stack}
+Table~\ref{tab:techstack} summarizes the finalized technology choices and
+their justification.
+
+\begin{longtable}{@{}p{2.8cm}p{3.8cm}p{6.5cm}@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} & \textbf{Justification} \\
+\midrule
+\endhead
+Historical backfill & CEDA Agri Market Data, Kaggle (backup) & Academically citable, official-data-derived source \\
+Live data source & data.gov.in Agmarknet API & Free, structured, government-maintained \\
+Forecasting model & Facebook Prophet & Handles small per-mandi series well; minimal tuning \\
+Baseline model & Naive / moving average (scikit-learn) & Enables an evidence-based accuracy comparison \\
+Backend & FastAPI (Python) & Lightweight, async, auto-documented REST API \\
+Database & SQLite (dev) / Supabase Postgres (prod) & Free hosting; state-partitioned schema \\
+Frontend & React (Vite) & Required for interactive, clickable India map \\
+Mapping & react-simple-maps + TopoJSON & Standard approach for clickable choropleth/state maps \\
+Charting & recharts & React-native price/forecast visualization \\
+Scheduling & GitHub Actions & Free CI/CD-based cron scheduling \\
+Deployment & Vercel/Netlify (frontend), Render (backend), Supabase (DB) & All free-tier, standard for student deployment \\
+\bottomrule
+\caption{Finalized technology stack.}
+\label{tab:techstack}
+\end{longtable}
+
+\section{Feasibility Discussion}
+\subsection{Data Feasibility}
+Both the live (Agmarknet API) and historical (CEDA) data sources have been
+confirmed to be freely accessible without institutional gatekeeping,
+unlike domains such as healthcare (patient-data access restrictions) or
+finance (proprietary transaction data), which was a key factor in
+selecting this domain over alternatives originally considered.
+
+\subsection{Technical Feasibility}
+Each component of the proposed stack (Prophet, FastAPI, React) is
+well-documented and widely used in comparable applications, keeping the
+implementation risk manageable for a team building most of this tooling
+for the first time in a practical setting.
+
+\subsection{Timeline Feasibility}
+The project scope (2--3 states, six commodities per state, roughly
+15--20 mandis per state) was deliberately bounded to fit a single
+academic-year capstone timeline, with a clear path to widening coverage
+later without architectural change (Section~3.1).
+
+\subsection{Ethical and Regulatory Considerations}
+As the system uses only publicly published government price data and
+does not process any personal, medical, or financial data, it does not
+raise the consent, privacy, or regulatory concerns that a healthcare- or
+finance-domain project would.

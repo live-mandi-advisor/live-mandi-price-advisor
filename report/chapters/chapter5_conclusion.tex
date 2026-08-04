@@ -1,0 +1,59 @@
+\chapter{Conclusion, Future Scope, Limitations}
+
+\section{Conclusion (Current Stage)}
+This report has presented the motivation, problem statement, literature
+positioning, and complete proposed architecture for the
+\ProjectTitle. The system's design -- a state-organized but
+mandi-granular forecasting approach, combining a one-time historical
+backfill with a continuously updating live pipeline -- was refined
+through preliminary analysis of real Agmarknet data rather than fixed
+in advance from assumption alone. The project's codebase has been
+scaffolded in line with this design and is under active development.
+
+\section{Work Plan and Timeline}
+Table~\ref{tab:timeline} presents the project's phase-wise plan and
+current status as of \ReviewLabel. Status will be updated at each
+subsequent review period.
+
+\begin{longtable}{@{}p{1.2cm}p{7.5cm}p{3cm}@{}}
+\toprule
+\textbf{Phase} & \textbf{Deliverable} & \textbf{Status} \\
+\midrule
+\endhead
+1 & API access, live ingestion script, state-partitioned DB schema, CEDA historical backfill for 2--3 states & In Progress \\
+2 & Data-driven top-6-crops-per-state selection & Not Started \\
+3 & Prophet model + naive baseline per (commodity, mandi), MAE comparison & Not Started \\
+4 & Sell/Hold decision logic, validated against historical cases & Not Started \\
+5 & Retraining pipeline, model registry, state-aggregation logic & Not Started \\
+6 & FastAPI backend: per-mandi and state-summary endpoints & Not Started \\
+7 & React frontend: Home page & In Progress \\
+8 & React frontend: Prediction page (map + drill-down) & Not Started \\
+9 & Automated scheduling and deployment & Not Started \\
+10 & Polish, documentation, final report & Not Started \\
+\bottomrule
+\caption{Project phase-wise work plan and status as of \ReviewLabel.}
+\label{tab:timeline}
+\end{longtable}
+
+\section{Current Limitations}
+As the project is at an early implementation stage, the following
+limitations apply as of this review and are expected to be resolved in
+subsequent phases:
+\begin{itemize}
+    \item No trained forecasting model exists yet; forecasting accuracy
+    cannot be evaluated at this stage (planned for Phase 3).
+    \item The live data pipeline and scheduled retraining job are
+    currently stub implementations (intentionally not yet scheduled to
+    run automatically, to avoid failures on incomplete code).
+    \item The frontend currently covers only the Home page structure;
+    the interactive India-map prediction page is planned for Phase 8.
+\end{itemize}
+
+\section{Future Scope}
+Beyond the current planned scope, the architecture supports several
+natural extensions without structural redesign: additional states and
+commodities (Section~3.1), explainability layers (e.g.\ SHAP/LIME) for
+the forecasting model to support academic evaluation and farmer trust,
+SMS/regional-language delivery of Sell/Hold alerts for farmers without
+reliable smartphone/internet access, and integration of weather data as
+an additional forecasting feature.

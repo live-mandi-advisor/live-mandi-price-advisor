@@ -236,3 +236,15 @@ pnpm-debug.log*
 ml/models/*.pkl
 !ml/models/.gitkeep
 .env
+
+# ---- LaTeX build artifacts (report/) ----
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.lof
+report/*.lot
+report/*.bbl
+report/*.blg
+report/*.synctex.gz
+report/*.pdf

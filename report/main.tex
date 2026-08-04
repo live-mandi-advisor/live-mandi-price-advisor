@@ -1,0 +1,98 @@
+% =====================================================================
+% Live Mandi Price Advisor -- Project Report
+% Brainware University -- BTech CSE (AI/ML) Capstone Project
+% Format follows: Project_Report_Template_BWU.docx (official BWU format)
+%
+% This is a LIVING document: update the relevant \input{} files each
+% review period rather than rewriting the whole report. See README.md
+% in this folder for the review-period workflow.
+% =====================================================================
+
+\documentclass[12pt,a4paper]{report}
+
+% ---------- Page geometry (A4, standard academic margins) ----------
+\usepackage[a4paper,left=1.5in,right=1in,top=1in,bottom=1in]{geometry}
+
+% ---------- Core packages ----------
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\usepackage[nottoc]{tocbibind} % include References in TOC, not List of Figs/Tables again
+\usepackage[numbers]{natbib}
+
+% ---------- Chapter/section title style ----------
+\titleformat{\chapter}[hang]{\normalfont\bfseries\Large}{\thechapter.}{10pt}{\Large}
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+
+% ---------- Header/footer ----------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+% ---------- Document variables (EDIT THESE per review / final report) ----------
+\newcommand{\ProjectTitle}{Live Mandi Price Advisor: A Real-Time Data-Driven Forecasting and Sell/Hold Advisory System for Indian Farmers}
+\newcommand{\SubmissionMonthYear}{August 2026}
+\newcommand{\DegreeName}{BACHELOR OF TECHNOLOGY}
+\newcommand{\BranchOfStudy}{Computer Science \& Engineering (Artificial Intelligence \& Machine Learning)}
+\newcommand{\UniversityName}{BRAINWARE UNIVERSITY}
+\newcommand{\UniversityAddress}{398, Ramkrishnapur Road, Barasat, North 24 Parganas, Kolkata - 700 125}
+\newcommand{\SupervisorName}{Dr. Biswarup Mukherjee}
+\newcommand{\SupervisorDesignation}{Professor \& Head of the Department}
+\newcommand{\HODName}{Dr. Biswarup Mukherjee}
+\newcommand{\HODDesignation}{Professor \& Head of the Department}
+\newcommand{\DeptName}{Computer Science \& Engineering (Artificial Intelligence \& Machine Learning)}
+\newcommand{\ReviewLabel}{Review 1}
+
+\begin{document}
+
+% ---------------------------------------------------------------
+% FRONT MATTER (roman numerals, no chapter numbering)
+% ---------------------------------------------------------------
+\pagenumbering{roman}
+
+\input{titlepage}
+\input{certificate}
+\input{abstract}
+
+\tableofcontents
+\listoftables
+\listoffigures
+\input{symbols}
+
+% ---------------------------------------------------------------
+% MAIN CHAPTERS (arabic numerals, per BWU-required chapter order)
+% ---------------------------------------------------------------
+\clearpage
+\pagenumbering{arabic}
+
+\input{chapters/chapter1_introduction}
+\input{chapters/chapter2_literature_review}
+\input{chapters/chapter3_methodology}
+\input{chapters/chapter4_results}
+\input{chapters/chapter5_conclusion}
+
+% ---------------------------------------------------------------
+% BACK MATTER
+% ---------------------------------------------------------------
+\input{appendices}
+
+\nocite{*} % TODO: remove once real in-text \cite{} commands are added;
+           % this forces the placeholder references to appear for now.
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
