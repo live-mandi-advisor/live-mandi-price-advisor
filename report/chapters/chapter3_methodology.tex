@@ -12,7 +12,7 @@ the overall data and control flow.
     box/.style={draw, rounded corners, minimum width=3.4cm, minimum height=1cm, align=center, font=\small},
     arr/.style={-Latex, thick}
 ]
-\node[box] (ceda) at (0,6) {CEDA Historical\\Backfill (one-time)};
+\node[box] (kaggle) at (0,6) {Kaggle Historical\\Backfill (one-time)};
 \node[box] (live) at (5,6) {Agmarknet Live API\\(daily)};
 \node[box] (db) at (2.5,4.5) {State-partitioned\\Database};
 \node[box] (train) at (2.5,3) {Retraining: one\\Prophet model per\\(commodity, mandi)};
@@ -20,7 +20,7 @@ the overall data and control flow.
 \node[box] (api) at (2.5,0) {FastAPI Backend\\(+ state aggregation)};
 \node[box] (frontend) at (2.5,-1.5) {React Frontend\\(Home + Prediction pages)};
 
-\draw[arr] (ceda) -- (db);
+\draw[arr] (kaggle) -- (db);
 \draw[arr] (live) -- (db);
 \draw[arr] (db) -- (train);
 \draw[arr] (train) -- (registry);
@@ -43,10 +43,37 @@ underlying mandi-level forecasts rather than being separately modelled.
 Prophet requires several months of history to reliably detect weekly and
 yearly seasonality; this cannot be obtained from live daily collection
 alone within a single academic year. The system therefore performs a
-one-time historical backfill from CEDA Agri Market Data before daily live
-collection begins, with the larger Kaggle "Daily Market Prices of
-Commodity India (2001--2026)" dataset available as a cross-check/backup
-source.
+one-time historical backfill from the Kaggle "Daily Market Prices of
+Commodity India (2001--2026)" dataset -- specifically its 2024 and 2025
+slices -- before daily live collection begins. This dataset is compiled
+by the same original maintainer as the live Agmarknet API dataset used
+for daily ingestion, giving one consistent data lineage across historical
+and live collection.
+
+\subsection{State and Crop Selection}
+The three states and six crops per state (Table~\ref{tab:cropselection})
+were finalized by ranking commodities within the 2024+2025 backfill data
+on reporting consistency (days/markets reported), not raw row count
+alone, so that a commodity with sporadic gaps is not favoured over one
+with steady daily coverage.
+
+\begin{longtable}{@{}p{2.8cm}p{10.5cm}@{}}
+\toprule
+\textbf{State} & \textbf{Top 6 crops (ranked)} \\
+\midrule
+\endhead
+Tamil Nadu & Coconut; Bhindi (Ladies Finger); Green Chilli; Bottle gourd;
+Snakeguard; Onion (edged out Banana-Green by a narrow margin, ranked on
+combined 2024+2025 data) \\
+Uttar Pradesh & Potato; Onion; Tomato; Wheat; Brinjal; Green Chilli
+(stable ranking independently in both 2024 and 2025) \\
+Maharashtra & Wheat; Bengal Gram; Soyabean; Arhar (Tur/Red Gram); Onion;
+Jowar (Sorghum) (stable ranking independently in both 2024 and 2025) \\
+\bottomrule
+\caption{Finalized state and top-6-crop selection, derived from
+reporting-consistency ranking on the 2024+2025 backfill data.}
+\label{tab:cropselection}
+\end{longtable}
 
 \subsection{Live Ingestion}
 A scheduled job (GitHub Actions cron) fetches the previous day's records
@@ -111,7 +138,7 @@ their justification.
 \textbf{Layer} & \textbf{Technology} & \textbf{Justification} \\
 \midrule
 \endhead
-Historical backfill & CEDA Agri Market Data, Kaggle (backup) & Academically citable, official-data-derived source \\
+Historical backfill & Kaggle "Daily Market Prices of Commodity India" (2024+2025 parquet) & Same lineage/maintainer as live API dataset; bulk-filterable across states/crops \\
 Live data source & data.gov.in Agmarknet API & Free, structured, government-maintained \\
 Forecasting model & Facebook Prophet & Handles small per-mandi series well; minimal tuning \\
 Baseline model & Naive / moving average (scikit-learn) & Enables an evidence-based accuracy comparison \\
@@ -129,8 +156,9 @@ Deployment & Vercel/Netlify (frontend), Render (backend), Supabase (DB) & All fr
 
 \section{Feasibility Discussion}
 \subsection{Data Feasibility}
-Both the live (Agmarknet API) and historical (CEDA) data sources have been
-confirmed to be freely accessible without institutional gatekeeping,
+Both the live (Agmarknet API) and historical (Kaggle-compiled Agmarknet)
+data sources have been confirmed to be freely accessible without
+institutional gatekeeping,
 unlike domains such as healthcare (patient-data access restrictions) or
 finance (proprietary transaction data), which was a key factor in
 selecting this domain over alternatives originally considered.

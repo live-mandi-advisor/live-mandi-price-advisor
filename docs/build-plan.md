@@ -12,10 +12,10 @@ Full UI spec is in Section 7.
 
 ```
 ┌───────────────────────┐        ┌───────────────────────┐
-│ CEDA Agri Market Data  │        │ data.gov.in Agmarknet  │
-│ (ONE-TIME historical   │        │ API (daily live prices)│
-│  backfill, years of    │        │                        │
-│  history) — Section 3.3│        └───────────┬───────────┘
+│ Kaggle historical      │        │ data.gov.in Agmarknet  │
+│ dataset (2024+2025     │        │ API (daily live prices)│
+│ parquet — ONE-TIME     │        │                        │
+│ backfill) — Section 3.3│        └───────────┬───────────┘
 └───────────┬───────────┘                     │ daily, scheduled
             │ one-time load                    ▼
             │                        ┌───────────────────┐
@@ -72,7 +72,7 @@ explains exactly why, and how the two layers connect.
 
 | Layer | Tool | Why |
 |---|---|---|
-| Historical backfill | **CEDA Agri Market Data** (agmarknet.ceda.ashoka.edu.in), Kaggle "Daily Market Prices of Commodity India (2001–2026)" as backup | CEDA is Ashoka University-compiled official Ministry of Agriculture data — most citable/defensible source for a report; Kaggle dump as cross-check/backup if CEDA's export is awkward for a given state/commodity |
+| Historical backfill | **Kaggle "Daily Market Prices of Commodity India (2001–2026)"** — using the 2024.parquet + 2025.parquet slices already on hand | Same underlying official Agmarknet/Ministry of Agriculture data, pre-compiled into ready-to-load parquet by the same author who maintains the live API dataset used for daily ingestion — one consistent lineage across historical + live, and far simpler to bulk-filter (3 states × 6 crops) than CEDA's per-query export UI. CEDA dropped as a source (was awkward for bulk pulls across multiple state/commodity combinations at once) |
 | Live data fetch | Python `requests` against data.gov.in Agmarknet API | Simple, no extra dependency |
 | Scheduler | GitHub Actions (cron) *or* APScheduler | Free, no server needed to run 24/7 |
 | Database | SQLite (local dev) → Supabase/Neon Postgres (deployed), tables **partitioned by state** | Matches the UI's state-first navigation; keeps per-state queries fast |
@@ -148,23 +148,20 @@ GET https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070
 Fields returned: `state, district, market, commodity, variety, grade, arrival_date,
 min_price, max_price, modal_price`
 
-### 3.3 Historical backfill — confirmed sources (do this before anything else)
+### 3.3 Historical backfill — confirmed source (do this before anything else)
 Prophet needs several months of history to detect seasonality properly (weekly patterns
 need several weeks minimum; yearly/seasonal patterns need a year+ of history — you will
 not get that from live collection alone within one academic semester). This is a hard
 blocker for Phase 1, not a nice-to-have.
 
-**Primary source — CEDA Agri Market Data** (`agmarknet.ceda.ashoka.edu.in`): a portal
-built by Ashoka University's Centre for Economic Data and Analysis, compiling the same
-official Directorate of Marketing & Inspection / Ministry of Agriculture Agmarknet data,
-with a proper UI to pick commodity, state, district, and a date range, then download.
-Use this as your main backfill source — it's the most defensible one to cite in your
-report ("official government data, academically compiled"), not just "a CSV we found."
-
-**Backup / cross-check — Kaggle "Daily Market Prices of Commodity India (2001–2026)"**
-(75M+ rows, 370+ commodities, CSV & Parquet): use this if CEDA's export interface is
-awkward for bulk-pulling many state/commodity combinations at once, or to sanity-check
-CEDA's numbers against an independent source for a few spot checks.
+**Source (finalized) — Kaggle "Daily Market Prices of Commodity India (2001–2026)"**,
+using the `2024.parquet` and `2025.parquet` slices already on hand. This is compiled by
+the same original owner/maintainer as the live API dataset used for daily ingestion
+(Section 3.4) — one consistent data lineage across historical backfill and live
+collection, rather than stitching together two independently-compiled sources.
+**CEDA Agri Market Data is no longer used** — its per-query export UI was awkward for
+bulk-pulling three states × six commodities at once; the Kaggle parquet files give the
+same underlying official Agmarknet data pre-filterable in bulk.
 
 **How this connects to the live pipeline:** backfill is a **one-time load** that happens
 once, before you turn on daily collection. Once your database has this historical base,
@@ -173,16 +170,35 @@ table going forward — this is the "accumulate day by day, like a stock price f
 mechanism, and it is the correct ongoing behavior. It just cannot be the *only* source
 of history, or your model will have no seasonality signal for months.
 
-### 3.3.1 Selecting your "top 6 crops per state" (data-driven, not guessed)
-Rather than picking 6 crops per state from general knowledge, derive the list from
-actual reporting-frequency evidence — e.g., the same row-count approach used to check
-today's live CSV: for each state, count how many markets/how many days each commodity
-appears in your backfilled historical data, and take the top 6 by consistency of
-reporting (not just by total row count, since a crop reported inconsistently will leave
-gaps in its Prophet training data even if it has some large one-off row counts). This
-list is what powers the Prediction page's "click a state → see its top 6 crops" screen
-(Section 7), and it should be computed once during Phase 1 and stored (e.g., a small
-`state_top_crops` config table), not hardcoded per state from assumption.
+**Loader script:** `data_pipeline/backfill_kaggle.py` (replaces the old
+`backfill_ceda.py`) — reads both parquet files, filters to the 3 finalized states and
+18 finalized crops below, cleans/standardizes commodity name variants, and loads into
+Postgres.
+
+### 3.3.1 Finalized states + top-6-crops-per-state (data-driven, locked)
+Derived from actual reporting-frequency evidence in the 2024+2025 Kaggle parquet data
+(row/day consistency per commodity per state, not just raw row count — a crop reported
+inconsistently leaves gaps in Prophet training data even with a large one-off row
+count). This is the list that powers the Prediction page's "click a state → see its top
+6 crops" screen (Section 7).
+
+| State | Top 6 crops (ranked) |
+|---|---|
+| **Tamil Nadu** *(combined 2024+2025 ranking, for robustness)* | 1. Coconut · 2. Bhindi (Ladies Finger) · 3. Green Chilli · 4. Bottle gourd · 5. Snakeguard · 6. Onion *(edged out Banana-Green by only ~1,000 records — a near-tie worth knowing)* |
+| **Uttar Pradesh** *(stable both years independently)* | 1. Potato · 2. Onion · 3. Tomato · 4. Wheat · 5. Brinjal · 6. Green Chilli |
+| **Maharashtra** *(stable both years independently)* | 1. Wheat · 2. Bengal Gram · 3. Soyabean · 4. Arhar (Tur/Red Gram) · 5. Onion · 6. Jowar (Sorghum) |
+
+This is now the fixed scope for Phase 1–3 (18 total commodity-state pairs, further
+split per mandi for actual model training — Section 4.5). The `state_top_crops` config
+table (Section 9) should be seeded directly from this table rather than recomputed, since
+it's already been derived from evidence.
+
+**Still open — the Variety question (not yet decided):** several of these commodities
+(e.g., Onion, Green Chilli) have multiple reported varieties per mandi/day (Section
+3.0's gotcha). Whether to collapse varieties per commodity into one series, or train
+separate models per variety, is still an open architectural call — it changes the total
+model count and how granular the per-mandi signal actually is. Resolve this before
+Section 4 (ML Core) training begins.
 
 ### 3.4 Ingestion script (concept)
 ```python
@@ -617,7 +633,7 @@ planning (Section 10), not as a later "nice to have."
 ```
 mandi-price-advisor/
 ├── data_pipeline/
-│   ├── backfill_ceda.py       # one-time historical load (Section 3.3)
+│   ├── backfill_kaggle.py     # one-time historical load from 2024/2025 parquet (Section 3.3)
 │   ├── fetch_agmarknet.py     # daily live ingestion
 │   └── db.py
 ├── ml/
@@ -646,7 +662,7 @@ mandi-price-advisor/
 
 | Phase | Weeks | Deliverable |
 |---|---|---|
-| 1 | 1–2 | API key working, live ingestion script, DB schema **partitioned by state**, **CEDA historical backfill** loaded for 2–3 states |
+| 1 | 1–2 | API key working, live ingestion script, DB schema **partitioned by state**, **Kaggle parquet historical backfill** loaded for the 3 finalized states (Tamil Nadu, Uttar Pradesh, Maharashtra) |
 | 2 | 3 | Data-driven **top-6-crops-per-state** selection (Section 3.3.1), stored in `state_top_crops` |
 | 3 | 4 | Prophet model + naive baseline **per (commodity, mandi)**, MAE comparison report |
 | 4 | 5 | Sell/Hold logic finalized, tested against historical "what would we have told the farmer" cases |
@@ -657,9 +673,10 @@ mandi-price-advisor/
 | 9 | 10 | Automate via GitHub Actions, deploy (Vercel + Render + Supabase) |
 | 10 | 11–12 | Polish, documentation, report, presentation rehearsal |
 
-**Scope control:** start with **2–3 states, 6 commodities each (data-driven selection),
-~20 mandis per state**. Expanding coverage later is trivial (just loop the same code
-over more filters/states) — don't try to cover all of India on day one.
+**Scope control (finalized):** **3 states — Tamil Nadu, Uttar Pradesh, Maharashtra —
+6 data-driven crops each (18 total, Section 3.3.1), ~15–20 mandis per state**. Expanding
+coverage later is trivial (just loop the same code over more filters/states) — don't try
+to cover all of India on day one.
 
 ---
 

@@ -32,8 +32,8 @@ non-technical farmer?}
 The specific objectives of this project are:
 \begin{enumerate}[label=\arabic*.]
     \item To identify and consolidate reliable historical and live sources
-    of Indian agricultural commodity price data (Agmarknet, CEDA Agri
-    Market Data).
+    of Indian agricultural commodity price data (Agmarknet live API, and
+    the Kaggle-compiled historical Agmarknet price dataset for backfill).
     \item To design a data pipeline that ingests live daily price data on
     an ongoing basis while maintaining sufficient historical depth for
     time-series modelling.
@@ -52,10 +52,12 @@ The specific objectives of this project are:
 \end{enumerate}
 
 \section{Scope of the Project}
-The system, in its current planned scope, covers 2--3 Indian states and
-the top six most-consistently-reported commodities per state (selected
-using actual historical reporting-frequency data rather than assumption),
-across roughly 15--20 mandis per state. This scope is intentionally
+The system's scope is finalized to three Indian states -- Tamil Nadu,
+Uttar Pradesh, and Maharashtra -- and the top six most-consistently-reported
+commodities per state (18 commodity-state pairs total), selected using
+actual historical reporting-frequency data from the 2024--2025 backfill
+rather than assumption, across roughly 15--20 mandis per state
+(Table~\ref{tab:cropselection}, Chapter~3). This scope is intentionally
 bounded for a single academic-year capstone project; the architecture is
 designed to extend to additional states/commodities without structural
 change (see Chapter~3).

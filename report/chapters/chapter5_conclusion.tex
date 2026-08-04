@@ -20,8 +20,8 @@ subsequent review period.
 \textbf{Phase} & \textbf{Deliverable} & \textbf{Status} \\
 \midrule
 \endhead
-1 & API access, live ingestion script, state-partitioned DB schema, CEDA historical backfill for 2--3 states & In Progress \\
-2 & Data-driven top-6-crops-per-state selection & Not Started \\
+1 & API access, live ingestion script, state-partitioned DB schema, Kaggle parquet historical backfill for 3 finalized states & In Progress \\
+2 & Data-driven top-6-crops-per-state selection (Table~\ref{tab:cropselection}, Chapter~3) & Finalized \\
 3 & Prophet model + naive baseline per (commodity, mandi), MAE comparison & Not Started \\
 4 & Sell/Hold decision logic, validated against historical cases & Not Started \\
 5 & Retraining pipeline, model registry, state-aggregation logic & Not Started \\
@@ -47,6 +47,11 @@ subsequent phases:
     run automatically, to avoid failures on incomplete code).
     \item The frontend currently covers only the Home page structure;
     the interactive India-map prediction page is planned for Phase 8.
+    \item Whether multiple reported varieties of the same commodity
+    (e.g.\ Onion, Green Chilli) should be collapsed into a single series
+    per (commodity, mandi) or modelled separately per variety is not yet
+    decided; this affects total model count and will be resolved before
+    Phase 3 training begins.
 \end{itemize}
 
 \section{Future Scope}

@@ -22,7 +22,7 @@ _Links will be added here once deployed._
 
 | Layer | Tech |
 |---|---|
-| Historical backfill | CEDA Agri Market Data (Ashoka University), Kaggle (backup) |
+| Historical backfill | Kaggle "Daily Market Prices of Commodity India" (2024+2025 parquet) |
 | Live data source | data.gov.in Agmarknet API |
 | Forecasting model | Facebook Prophet — one model per (commodity, mandi) |
 | Backend | FastAPI |

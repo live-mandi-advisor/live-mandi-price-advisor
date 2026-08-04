@@ -38,11 +38,12 @@ The Government of India's \textbf{Agmarknet} portal (under data.gov.in)
 publishes daily wholesale/modal commodity prices from regulated mandis
 across the country, and is the primary live data source used by
 government and academic work in this space alike. For historical depth,
-the \textbf{CEDA Agri Market Data} initiative (Centre for Economic Data
-and Analysis, Ashoka University) compiles and republishes the same
-underlying Agmarknet data with a more research-friendly export interface,
-and is used in this project as the primary historical backfill source for
-its academic citability.
+this project uses the Kaggle-hosted \textbf{"Daily Market Prices of
+Commodity India"} dataset, compiled by the same maintainer as the live
+API dataset from the same underlying official Agmarknet records. Using
+one consistent data lineage across historical backfill and live
+collection avoids the schema and coverage inconsistencies that can arise
+from stitching together independently-compiled sources.
 
 \section{Forecasting Methodology}
 Time-series forecasting of agricultural commodity prices has been
