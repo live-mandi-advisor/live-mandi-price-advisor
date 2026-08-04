@@ -34,7 +34,7 @@
 \usepackage[numbers]{natbib}
 
 % ---------- Chapter/section title style ----------
-\titleformat{\chapter}[hang]{\normalfont\bfseries\Large}{\thechapter.}{10pt}{\Large}
+\titleformat{\chapter}[display]{\normalfont\bfseries\centering\Large}{\Large\thechapter.}{6pt}{\Large}
 \titlespacing*{\chapter}{0pt}{0pt}{20pt}
 
 % ---------- Header/footer ----------
@@ -68,9 +68,16 @@
 \input{certificate}
 \input{abstract}
 
+\clearpage
 \tableofcontents
+
+\clearpage
 \listoftables
+
+\clearpage
 \listoffigures
+
+\clearpage
 \input{symbols}
 
 % ---------------------------------------------------------------
