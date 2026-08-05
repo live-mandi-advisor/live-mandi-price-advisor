@@ -176,11 +176,20 @@ of history, or your model will have no seasonality signal for months.
 Postgres.
 
 ### 3.3.1 Finalized states + top-6-crops-per-state (data-driven, locked)
-Derived from actual reporting-frequency evidence in the 2024+2025 Kaggle parquet data
-(row/day consistency per commodity per state, not just raw row count — a crop reported
-inconsistently leaves gaps in Prophet training data even with a large one-off row
-count). This is the list that powers the Prediction page's "click a state → see its top
-6 crops" screen (Section 7).
+Derived from actual reporting-frequency evidence in the 2024+2025 Kaggle parquet data —
+ranked by total record count per commodity per state (rows across all mandis and days
+combined), with mandi count and day count pulled alongside as supporting context, not
+as separate weighting factors in the ranking itself. This is the list that powers the
+Prediction page's "click a state → see its top 6 crops" screen (Section 7).
+
+**Note on methodology limits:** a pure record-count ranking can, in principle, let a
+commodity with a large one-off volume outrank one with steadier but lower-volume daily
+coverage. This didn't materially affect UP or Maharashtra (both stable across 2024 and
+2025 independently), but Tamil Nadu's top crops were closely clustered by volume, which
+is why its ranking used combined 2024+2025 totals rather than a single year — see
+Section 3.3 below. A true consistency-weighted score (e.g. normalizing by days
+reported ÷ total days in year) was considered but not implemented; if TN's near-ties
+become a concern later, this is the first refinement to make.
 
 | State | Top 6 crops (ranked) |
 |---|---|
