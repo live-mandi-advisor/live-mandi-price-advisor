@@ -17,24 +17,24 @@ FINALIZED_STATES = ["Tamil Nadu", "Uttar Pradesh", "Maharashtra"]
 
 FINALIZED_CROPS = {
     "Tamil Nadu": [
-        "Coconut", "Bhindi(Ladies Finger)", "Green Chilli",
+        "Coconut", "Bhindi (Ladies Finger)", "Green Chilli",
         "Bottle gourd", "Snakeguard", "Onion",
     ],
     "Uttar Pradesh": [
         "Potato", "Onion", "Tomato", "Wheat", "Brinjal", "Green Chilli",
     ],
     "Maharashtra": [
-        "Wheat", "Bengal Gram(Gram)(Whole)", "Soyabean",
-        "Arhar (Tur/Red Gram)(Whole)", "Onion", "Jowar(Sorghum)",
+        "Wheat", "Bengal Gram (Gram)(Whole)", "Soyabean",
+        "Arhar (Tur/Red Gram)(Whole)", "Onion", "Jowar (Sorghum)",
     ],
 }
+
+# Verified against actual 2024.parquet + 2025.parquet Commodity column
+# values on 2026-08-05 -- all 18 strings above are confirmed exact matches.
 
 # TODO Phase 1:
 # - Read 2024.parquet and 2025.parquet
 # - Filter to FINALIZED_STATES + FINALIZED_CROPS above
-# - Clean/standardize commodity name variants (e.g. confirm exact string
-#   spellings against the parquet's actual commodity column values --
-#   names above are best-effort, verify before filtering)
 # - Resolve the still-open Variety question (build-plan.md Section 3.3.1)
 #   before finalizing per-(commodity, mandi) series
 # - Load into the same state-partitioned tables used by fetch_agmarknet.py
