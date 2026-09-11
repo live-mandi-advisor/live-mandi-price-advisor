@@ -20,8 +20,8 @@ subsequent review period.
 \textbf{Phase} & \textbf{Deliverable} & \textbf{Status} \\
 \midrule
 \endhead
-1 & API access, live ingestion script, state-partitioned DB schema, Kaggle parquet historical backfill for 3 finalized states & In Progress \\
-2 & Data-driven top-6-crops-per-state selection (Table~\ref{tab:cropselection}, Chapter~3) & Finalized \\
+1 & Supabase connection verified, normalized DB schema (single \texttt{price\_records} fact table, not state-partitioned), Kaggle parquet historical backfill loaded and validated (1,185,657 records, 3 states, 2024-01-01 to 2025-12-29 -- Section~3.2.2) & Done \\
+2 & Data-driven top-6-crops-per-state selection (Table~\ref{tab:cropselection}, Chapter~3) & Done \\
 3 & Prophet model + naive baseline per (commodity, mandi), MAE comparison & Not Started \\
 4 & Sell/Hold decision logic, validated against historical cases & Not Started \\
 5 & Retraining pipeline, model registry, state-aggregation logic & Not Started \\

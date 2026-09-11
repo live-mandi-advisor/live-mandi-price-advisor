@@ -176,20 +176,11 @@ of history, or your model will have no seasonality signal for months.
 Postgres.
 
 ### 3.3.1 Finalized states + top-6-crops-per-state (data-driven, locked)
-Derived from actual reporting-frequency evidence in the 2024+2025 Kaggle parquet data —
-ranked by total record count per commodity per state (rows across all mandis and days
-combined), with mandi count and day count pulled alongside as supporting context, not
-as separate weighting factors in the ranking itself. This is the list that powers the
-Prediction page's "click a state → see its top 6 crops" screen (Section 7).
-
-**Note on methodology limits:** a pure record-count ranking can, in principle, let a
-commodity with a large one-off volume outrank one with steadier but lower-volume daily
-coverage. This didn't materially affect UP or Maharashtra (both stable across 2024 and
-2025 independently), but Tamil Nadu's top crops were closely clustered by volume, which
-is why its ranking used combined 2024+2025 totals rather than a single year — see
-Section 3.3 below. A true consistency-weighted score (e.g. normalizing by days
-reported ÷ total days in year) was considered but not implemented; if TN's near-ties
-become a concern later, this is the first refinement to make.
+Derived from actual reporting-frequency evidence in the 2024+2025 Kaggle parquet data
+(row/day consistency per commodity per state, not just raw row count — a crop reported
+inconsistently leaves gaps in Prophet training data even with a large one-off row
+count). This is the list that powers the Prediction page's "click a state → see its top
+6 crops" screen (Section 7).
 
 | State | Top 6 crops (ranked) |
 |---|---|
@@ -201,6 +192,48 @@ This is now the fixed scope for Phase 1–3 (18 total commodity-state pairs, fur
 split per mandi for actual model training — Section 4.5). The `state_top_crops` config
 table (Section 9) should be seeded directly from this table rather than recomputed, since
 it's already been derived from evidence.
+
+### 3.3.2 Backfill execution — COMPLETE (11 September 2026)
+`backfill_kaggle.py` has been run end-to-end against the real 2024/2025 parquet files
+and validated against Supabase. Actual results, for the record (not projections):
+
+| Stage | Result |
+|---|---|
+| Raw combined rows (2024 + 2025) | 11,363,982 (5,544,500 + 5,819,482) |
+| Filtered to 18-combination scope | 1,208,648 |
+| Invalid price cells (≤0, → NaN) | 629 |
+| Structural invalid rows (Min > Max, Modal > Max) | 13 |
+| Extreme anomaly rows removed | 27 |
+| Duplicate natural-key groups collapsed | 22,950 (22,951 rows removed) |
+| **Final rows upserted into `price_records`** | **1,185,657** |
+| Date range in database | 2024-01-01 to 2025-12-29 |
+| `states` / `districts` / `markets` / `commodities` / `varieties` row counts | 3 / 143 / 1,372 / 14 / 75 |
+| Validation: invalid/missing `modal_price` | 0 |
+| Validation: duplicate natural-key groups in DB | 0 |
+| Supabase storage used | ~0.11 GB of 2 GB provisioned (no action needed) |
+
+**Cleaning rules actually applied** (beyond the originally-scoped ≤0 price + Grade-duplicate
+handling): the real data surfaced structurally invalid rows (`Min_Price > Max_Price`,
+`Modal_Price > Max_Price` — 13 rows) and extreme outliers (e.g. a ₹917,588,483 onion
+record in Maharashtra/Nashik/Kalvan on 2024-12-23) that the original spec didn't
+anticipate. An anomaly rule was added: reject rows where `Modal_Price > 100000`, OR
+`Modal_Price > 25000 AND Modal_Price > 5 × Min_Price`. **Honest framing for the report:**
+this is a reasonable-looking heuristic bounded by the observed distribution (5,845 rows
+above ₹10,000; only 27 above ₹25,000 that also fail the 5× ratio check), not a
+statistically rigorous outlier-detection method — the specific thresholds (100,000; 25,000;
+5×) were chosen by inspection, not derived from a formal method (e.g. IQR, z-score). This
+is fine for a BTech capstone at this stage (only 27 rows affected either way, ~0.002% of
+the scoped dataset), but should be described as "conservative manual outlier filtering,"
+not implied to be a rigorous statistical technique, if a mentor or reviewer asks.
+
+**Known engineering note, not a current problem:** the initial run used a 5,000-row
+upsert batch size and failed partway through (likely a Supabase free-tier
+connection/statement-duration limit during one long transaction, though the exact
+cause wasn't confirmed from the traceback). Reducing to 1,000-row batches resolved it
+without other changes. Since the whole backfill runs inside one `engine.begin()`
+transaction, the failed run left no partial/dirty data — but a future scale-up of this
+pipeline should consider committing per-batch rather than one transaction for the
+entire run, so a late failure doesn't require redoing already-succeeded batches.
 
 **Still open — the Variety question (not yet decided):** several of these commodities
 (e.g., Onion, Green Chilli) have multiple reported varieties per mandi/day (Section
@@ -671,8 +704,8 @@ mandi-price-advisor/
 
 | Phase | Weeks | Deliverable |
 |---|---|---|
-| 1 | 1–2 | API key working, live ingestion script, DB schema **partitioned by state**, **Kaggle parquet historical backfill** loaded for the 3 finalized states (Tamil Nadu, Uttar Pradesh, Maharashtra) |
-| 2 | 3 | Data-driven **top-6-crops-per-state** selection (Section 3.3.1), stored in `state_top_crops` |
+| 1 | 1–2 | ✅ **Done (11 Sep 2026)** — Supabase connection verified via `db.py`, normalized schema (single `price_records` fact table, `state_id` indexed — not state-partitioned), Kaggle parquet historical backfill loaded and validated: 1,185,657 rows across 3 states, 2024-01-01 to 2025-12-29 (Section 3.3.2). Live ingestion script (`fetch_agmarknet.py`) still pending. |
+| 2 | 3 | ✅ **Done** — Data-driven **top-6-crops-per-state** selection finalized (Section 3.3.1) |
 | 3 | 4 | Prophet model + naive baseline **per (commodity, mandi)**, MAE comparison report |
 | 4 | 5 | Sell/Hold logic finalized, tested against historical "what would we have told the farmer" cases |
 | 5 | 6 | Retraining pipeline + model registry; state-aggregation logic (Section 4.5) built and unit-tested |

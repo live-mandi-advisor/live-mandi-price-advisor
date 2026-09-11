@@ -77,10 +77,10 @@ Agmarknet dataset (resource ID `9ef84268-d588-465a-a308-a864a43d0070`).
 
 | | |
 |---|---|
-| [Tanmoy Maiti] | [GitHub](https://github.com/) |
-| [Arnab Das] | [GitHub](https://github.com/) |
-| [Raja Kumar] | [GitHub](https://github.com/) |
-| [Aditya Bharati] | [GitHub](https://github.com/) |
+| [Name] | [GitHub](https://github.com/) |
+| [Name] | [GitHub](https://github.com/) |
+| [Name] | [GitHub](https://github.com/) |
+| [Name] | [GitHub](https://github.com/) |
 
 ## License
 

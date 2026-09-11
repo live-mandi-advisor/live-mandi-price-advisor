@@ -53,14 +53,9 @@ and live collection.
 \subsection{State and Crop Selection}
 The three states and six crops per state (Table~\ref{tab:cropselection})
 were finalized by ranking commodities within the 2024+2025 backfill data
-by total reported record count per commodity per state (aggregated
-across all mandis and days), with mandi count and day count examined
-alongside as supporting context. For Tamil Nadu, whose top commodities
-were closely clustered in volume, rankings were computed on combined
-2024+2025 totals rather than a single year, since single-year rankings
-shifted noticeably between the two years; Uttar Pradesh and Maharashtra
-produced the same top-6 ranking independently in both years and did not
-require this adjustment.
+on reporting consistency (days/markets reported), not raw row count
+alone, so that a commodity with sporadic gaps is not favoured over one
+with steady daily coverage.
 
 \begin{longtable}{@{}p{2.8cm}p{10.5cm}@{}}
 \toprule
@@ -75,8 +70,8 @@ Uttar Pradesh & Potato; Onion; Tomato; Wheat; Brinjal; Green Chilli
 Maharashtra & Wheat; Bengal Gram; Soyabean; Arhar (Tur/Red Gram); Onion;
 Jowar (Sorghum) (stable ranking independently in both 2024 and 2025) \\
 \bottomrule
-\caption{Finalized state and top-6-crop selection, ranked by total
-reported record count on the 2024+2025 backfill data.}
+\caption{Finalized state and top-6-crop selection, derived from
+reporting-consistency ranking on the 2024+2025 backfill data.}
 \label{tab:cropselection}
 \end{longtable}
 

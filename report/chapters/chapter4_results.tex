@@ -1,42 +1,100 @@
 \chapter{Results, Analysis \& Discussions}
 
 \section{Status as of \ReviewLabel}
-At the time of this review, the project is in the architecture and
-scaffolding stage: the system design (Chapter~3), data pipeline strategy,
-and technology stack have been finalized, and the project's version-control
-repository has been structured accordingly (data pipeline, machine
-learning, backend, and frontend modules, each with defined interfaces).
-Implementation of the live data pipeline, model training, and the
-frontend application is in progress and had not yet produced evaluable
-output at the time of this submission.
+The historical data foundation for the project has been implemented and
+validated end-to-end: a normalized PostgreSQL (Supabase) schema is live,
+and the full 2024--2025 Kaggle historical backfill has been loaded,
+cleaned, and verified against it. Live data ingestion, forecasting model
+training, and the frontend application remain in progress and had not
+yet produced evaluable output at the time of this submission.
 
-% TODO (Review 2 onward): replace this chapter's content with actual
-% results as they become available -- e.g.:
-%   - Sample of cleaned, backfilled historical data (row counts, date
-%     coverage per state/commodity)
-%   - Prophet vs. baseline MAE comparison table, per commodity/mandi
-%   - Screenshots of the working dashboard / prediction page
-%   - Any deviations from the Chapter 3 design and why
+\section{Database Schema Implementation}
+The schema described in Chapter~3 was implemented using SQLAlchemy Core
+against Supabase PostgreSQL: five normalized lookup tables
+(\texttt{states}, \texttt{districts}, \texttt{markets},
+\texttt{commodities}, \texttt{varieties}) respecting a strict hierarchy
+(district scoped by state, market scoped by district, variety scoped by
+commodity -- a market or variety name is not assumed unique on its own),
+plus \texttt{price\_records} (the single fact table, not partitioned by
+state), \texttt{forecasts}, and \texttt{model\_registry}. The connection
+and schema creation were verified independently before any data loading
+was attempted.
 
-\section{Preliminary Data Analysis}
-A sample single-day national Agmarknet export (9{,}584 records across 25
-states, 271 districts, 642 markets, and 188 commodities) was analyzed to
-validate assumptions made during architecture design. This confirmed, in
-particular: (a) the field-name encoding artefact described in
-Section~3.2.3 is present in bulk exports and not only the API preview;
-(b) the variety/grade duplication pattern occurs in practice (e.g.\ two
-distinct modal prices recorded for \textit{Arecanut} at the same market
-on the same day); and (c) commodity reporting coverage varies
-meaningfully by state -- for example, an originally assumed commodity
-(Soyabean) had zero recorded rows for Maharashtra on the sampled day,
-which directly motivated the shift to a data-driven, per-state top-crop
-selection methodology (Section~3.1) rather than an assumed fixed crop
-list.
+\section{Historical Backfill Results}
+Table~\ref{tab:backfillresults} summarizes the actual execution of
+\texttt{backfill\_kaggle.py} against the real 2024.parquet and
+2025.parquet files, run on 11 September 2026.
+
+\begin{longtable}{@{}p{8.5cm}p{4.5cm}@{}}
+\toprule
+\textbf{Stage} & \textbf{Result} \\
+\midrule
+\endhead
+Raw combined rows (2024 + 2025) & 11{,}363{,}982 \\
+Filtered to the 18 finalized state-crop combinations & 1{,}208{,}648 \\
+Invalid price cells ($\leq 0$, converted to missing) & 629 \\
+Structurally invalid rows (Min $>$ Max, or Modal $>$ Max) & 13 \\
+Extreme anomaly rows removed & 27 \\
+Duplicate natural-key groups collapsed & 22{,}950 (22{,}951 rows) \\
+\textbf{Final rows upserted into price\_records} & \textbf{1{,}185{,}657} \\
+Date range in database & 2024-01-01 to 2025-12-29 \\
+\bottomrule
+\caption{Historical backfill pipeline execution results.}
+\label{tab:backfillresults}
+\end{longtable}
+
+Post-load validation confirmed: zero rows with invalid or missing
+\texttt{modal\_price}, and zero duplicate natural-key groups in the
+database -- i.e.\ the uniqueness constraint on (market, commodity,
+variety, arrival date) was never violated across the full load.
+Table~\ref{tab:lookupcounts} shows the resulting lookup table sizes.
+
+\begin{longtable}{@{}p{5cm}p{3cm}@{}}
+\toprule
+\textbf{Lookup table} & \textbf{Row count} \\
+\midrule
+\endhead
+states & 3 \\
+districts & 143 \\
+markets & 1{,}372 \\
+commodities & 14 \\
+varieties & 75 \\
+\bottomrule
+\caption{Lookup table sizes after backfill.}
+\label{tab:lookupcounts}
+\end{longtable}
+
+Notably, the 18 finalized state-crop combinations resolve to only 14
+distinct \texttt{commodities} rows, not 18 -- because Onion (reported in
+all three states), Wheat (Uttar Pradesh and Maharashtra), and Green
+Chilli (Tamil Nadu and Uttar Pradesh) are the same commodity row shared
+across states, correctly normalized rather than duplicated. Supabase
+storage usage after the full load was approximately 0.11\,GB of the
+2\,GB free-tier provision, confirming no near-term storage concern for
+the current project scope.
+
+\section{Engineering Issue Encountered and Resolved}
+The first full backfill run used a 5{,}000-row batch size for the
+PostgreSQL upsert and failed partway through, most likely due to a
+statement-size or connection-duration constraint on Supabase's free
+tier (the exact server-side cause was not confirmed from the client
+traceback). Because the entire backfill runs inside a single database
+transaction, the partial run was safely rolled back rather than leaving
+inconsistent data. Reducing the batch size to 1{,}000 rows resolved the
+issue without any other pipeline changes, and the corrected run
+completed successfully with the results above.
 
 \section{Discussion}
-This preliminary analysis illustrates the value of validating
-architectural assumptions against real data before implementation begins
--- several design decisions in Chapter~3 (state-based data organization,
-data-driven crop selection, variety-deduplication logic) were refined
-directly as a result of this analysis rather than decided purely from
-documentation.
+This stage validated several Chapter~3 design decisions directly against
+real data rather than assumption: the hierarchical (not flat) lookup-ID
+mapping was necessary in practice (market and variety names do recur
+across different parent districts/commodities in the raw data), and the
+originally-scoped cleaning rules (invalid prices, natural-key
+deduplication) were insufficient on their own -- structurally invalid
+rows and extreme statistical outliers (e.g.\ a single recorded
+modal price of Rs.\ 917{,}588{,}483 for onion) required
+additional, explicitly-documented cleaning rules not anticipated in the
+original design. This is treated as expected refinement through
+implementation, consistent with this report's approach throughout: design
+decisions are validated or revised against real data as it becomes
+available, rather than assumed correct from documentation alone.
