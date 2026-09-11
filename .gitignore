@@ -248,3 +248,17 @@ report/*.bbl
 report/*.blg
 report/*.synctex.gz
 report/*.pdf
+
+# ---- Project-specific ----
+
+*.db
+*.sqlite
+*.sqlite3
+
+ml/models/*.pkl
+!ml/models/.gitkeep
+
+.env
+
+# ---- Project data ----
+data/
