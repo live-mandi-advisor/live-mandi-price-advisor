@@ -7,7 +7,7 @@ on:
 
 jobs:
   ingest:
-    runs-on: ubuntu-22.04
+    runs-on: windows-2022
 
     steps:
       - name: Checkout repository
