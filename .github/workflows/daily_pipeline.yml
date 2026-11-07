@@ -21,6 +21,11 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
+      - name: Diagnose API connectivity
+        run: |
+          python -c "import requests; print('Google:', requests.get('https://www.google.com', timeout=15).status_code)"
+          python -c "import requests; r=requests.get('https://api.data.gov.in', timeout=15); print('Data.gov.in:', r.status_code)"
+
       - name: Fetch and store live mandi prices
         env:
           AGMARKNET_API_KEY: ${{ secrets.AGMARKNET_API_KEY }}
