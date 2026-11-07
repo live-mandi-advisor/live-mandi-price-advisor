@@ -37,7 +37,7 @@ from sqlalchemy import (
     create_engine,
     text,
 )
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 
 
 # Load DATABASE_URL from .env
@@ -51,7 +51,13 @@ if not DATABASE_URL:
 
 # SQLAlchemy engine for PostgreSQL/Supabase.
 # psycopg2 is used as the PostgreSQL driver.
-engine: Engine = create_engine(DATABASE_URL)
+
+# Explicitly use psycopg2 as the PostgreSQL driver.
+database_url = make_url(DATABASE_URL).set(
+    drivername="postgresql+psycopg2"
+)
+
+engine: Engine = create_engine(database_url)
 
 
 # Single SQLAlchemy Core metadata object.
