@@ -1,28 +1,28 @@
 name: Daily Mandi Data Pipeline
 
-# NOTE: the scheduled (cron) trigger is intentionally commented out until
-# Phase 1 (real fetch_agmarknet.py + retrain.py implementation + the
-# AGMARKNET_API_KEY secret) is actually done. Right now this workflow only
-# runs when someone manually triggers it from the Actions tab, so it won't
-# spam failed nightly runs on stub code.
 on:
   # schedule:
-  #   - cron: "0 2 * * *"   # UN-COMMENT this once Phase 1 is complete
-  workflow_dispatch: {}      # manual trigger only, for now
+  #   - cron: "0 2 * * *"
+  workflow_dispatch:
 
 jobs:
-  ingest-and-retrain:
+  ingest:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Fetch today's live prices
+        run: python -m pip install -r requirements.txt
+
+      - name: Fetch and store live mandi prices
         env:
           AGMARKNET_API_KEY: ${{ secrets.AGMARKNET_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python data_pipeline/fetch_agmarknet.py
-      - name: Retrain models
-        run: python ml/retrain.py
