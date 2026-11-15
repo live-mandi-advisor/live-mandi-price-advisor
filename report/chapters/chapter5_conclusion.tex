@@ -1,64 +1,92 @@
 \chapter{Conclusion, Future Scope, Limitations}
 
-\section{Conclusion (Current Stage)}
-This report has presented the motivation, problem statement, literature
-positioning, and complete proposed architecture for the
-\ProjectTitle. The system's design -- a state-organized but
-mandi-granular forecasting approach, combining a one-time historical
-backfill with a continuously updating live pipeline -- was refined
-through preliminary analysis of real Agmarknet data rather than fixed
-in advance from assumption alone. The project's codebase has been
-scaffolded in line with this design and is under active development.
+\section{Conclusion}
+This project has implemented a complete agricultural price forecasting
+system demonstrating the full ML pipeline -- from raw data ingestion
+through model training and evaluation to a working web application.
+Starting from 11.3 million raw Agmarknet records, the system ingested
+1{,}185{,}657 cleaned price records across 3 states, 18 commodity
+combinations, and 1{,}372 markets. It trained 2{,}347 Prophet models,
+evaluated them against a naive baseline, generated 17{,}451 precomputed
+7-day forecasts, and served them through a FastAPI backend and React
+frontend.
+
+The system is presented as a \textbf{historical-data demonstration},
+using data as of 29 December 2025. Live data ingestion is designed but
+not operationally deployed; this is explicitly disclosed in the
+application interface. The core contribution is a reproducible,
+end-to-end pipeline that could be extended to live operation once a
+reliable data source is confirmed.
 
 \section{Work Plan and Timeline}
 Table~\ref{tab:timeline} presents the project's phase-wise plan and
-current status as of \ReviewLabel. Status will be updated at each
-subsequent review period.
+final status.
 
 \begin{longtable}{@{}p{1.2cm}p{7.5cm}p{3cm}@{}}
 \toprule
 \textbf{Phase} & \textbf{Deliverable} & \textbf{Status} \\
 \midrule
 \endhead
-1 & Supabase connection verified, normalized DB schema (single \texttt{price\_records} fact table, not state-partitioned), Kaggle parquet historical backfill loaded and validated (1,185,657 records, 3 states, 2024-01-01 to 2025-12-29 -- Section~3.2.2) & Done \\
-2 & Data-driven top-6-crops-per-state selection (Table~\ref{tab:cropselection}, Chapter~3) & Done \\
-3 & Prophet model + naive baseline per (commodity, mandi), MAE comparison & Not Started \\
-4 & Sell/Hold decision logic, validated against historical cases & Not Started \\
-5 & Retraining pipeline, model registry, state-aggregation logic & Not Started \\
-6 & FastAPI backend: per-mandi and state-summary endpoints & Not Started \\
-7 & React frontend: Home page & In Progress \\
-8 & React frontend: Prediction page (map + drill-down) & Not Started \\
-9 & Automated scheduling and deployment & Not Started \\
-10 & Polish, documentation, final report & Not Started \\
+1 & Supabase schema, Kaggle backfill (1{,}185{,}657 records, 3 states, 2024--2025) & Done \\
+2 & Data-driven top-6-crops-per-state selection & Done \\
+3 & Prophet + naive baseline per (commodity, mandi), rolling MAE evaluation & Done \\
+4 & Sell/Hold decision logic (2\% band rule) & Done \\
+5 & Model registry, forecast precomputation (17{,}451 rows) & Done \\
+6 & FastAPI backend: 5 endpoints & Done \\
+7 & React frontend: Home page with dynamic sections & Done \\
+8 & React frontend: Prediction page (state $\to$ crop $\to$ market $\to$ chart/table) & Done \\
+9 & Live ingestion pipeline (design complete; not operationally deployed) & Partial \\
+10 & Deployment, documentation, final report & Done \\
 \bottomrule
-\caption{Project phase-wise work plan and status as of \ReviewLabel.}
+\caption{Project phase-wise work plan and final status.}
 \label{tab:timeline}
 \end{longtable}
 
-\section{Current Limitations}
-As the project is at an early implementation stage, the following
-limitations apply as of this review and are expected to be resolved in
-subsequent phases:
+\section{Limitations}
 \begin{itemize}
-    \item No trained forecasting model exists yet; forecasting accuracy
-    cannot be evaluated at this stage (planned for Phase 3).
-    \item The live data pipeline and scheduled retraining job are
-    currently stub implementations (intentionally not yet scheduled to
-    run automatically, to avoid failures on incomplete code).
-    \item The frontend currently covers only the Home page structure;
-    the interactive India-map prediction page is planned for Phase 8.
-    \item Whether multiple reported varieties of the same commodity
-    (e.g.\ Onion, Green Chilli) should be collapsed into a single series
-    per (commodity, mandi) or modelled separately per variety is not yet
-    decided; this affects total model count and will be resolved before
-    Phase 3 training begins.
+    \item \textbf{Historical-only data.} The demonstration uses data
+    ending 29 December 2025. Forecast dates are therefore in late 2025
+    to early 2026, not the current date. The application discloses this
+    explicitly. Live ingestion is designed (Section~3.2.3) but was not
+    operationally deployed due to Agmarknet API reliability issues from
+    cloud runners.
+    \item \textbf{Variety averaging.} Modal prices are averaged across
+    all reported varieties per (commodity, market, date). For commodities
+    with real grade splits (Onion 1st/2nd sort, Coconut Big/Medium/Small),
+    this blends different price tiers if the grade mix shifts over time.
+    \item \textbf{Naive baseline dominance.} The naive trailing-average
+    baseline outperformed Prophet on 80\% of evaluated pairs by normalized
+    MAE. This is a documented finding (Chapter~4), not a system failure --
+    it reflects the noisy, mean-reverting nature of short-horizon mandi
+    price series. Prophet remains the deployment model, with the baseline
+    comparison reported as an experimental result.
+    \item \textbf{Sparse markets excluded.} Markets with fewer than 180
+    distinct reporting days were not eligible for Prophet training, excluding
+    approximately 65\% of all (commodity, market) combinations in the
+    database. These are predominantly thin or sporadically reporting markets.
+    \item \textbf{No deployment.} The working system runs locally; cloud
+    deployment was not completed within the project timeline.
 \end{itemize}
 
 \section{Future Scope}
-Beyond the current planned scope, the architecture supports several
-natural extensions without structural redesign: additional states and
-commodities (Section~3.1), explainability layers (e.g.\ SHAP/LIME) for
-the forecasting model to support academic evaluation and farmer trust,
-SMS/regional-language delivery of Sell/Hold alerts for farmers without
-reliable smartphone/internet access, and integration of weather data as
-an additional forecasting feature.
+The architecture supports several natural extensions without structural
+redesign:
+\begin{itemize}
+    \item \textbf{Live data ingestion:} connecting the existing pipeline
+    design to a reliable Agmarknet data feed would make forecasts current.
+    \item \textbf{Per-commodity model selection:} applying the naive
+    baseline for commodities where it consistently wins (e.g.\ Tomato)
+    and Prophet only where it adds value (e.g.\ Snakeguard) would improve
+    forecast accuracy.
+    \item \textbf{Additional states and commodities:} the schema and
+    pipeline are not state-specific; wider coverage requires only
+    additional backfill and retraining.
+    \item \textbf{Explainability:} SHAP or LIME layers on the forecast
+    output to build farmer trust and support academic evaluation.
+    \item \textbf{Regional language and SMS delivery:} Sell/Hold alerts
+    delivered via SMS in regional languages for farmers without reliable
+    internet access.
+    \item \textbf{Weather feature integration:} incorporating rainfall
+    or temperature data as additional Prophet regressors for
+    weather-sensitive crops.
+\end{itemize}

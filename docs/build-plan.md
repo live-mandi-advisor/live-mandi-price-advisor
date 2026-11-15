@@ -235,12 +235,18 @@ transaction, the failed run left no partial/dirty data — but a future scale-up
 pipeline should consider committing per-batch rather than one transaction for the
 entire run, so a late failure doesn't require redoing already-succeeded batches.
 
-**Still open — the Variety question (not yet decided):** several of these commodities
+**Variety handling decision (resolved before training):** several commodities
 (e.g., Onion, Green Chilli) have multiple reported varieties per mandi/day (Section
-3.0's gotcha). Whether to collapse varieties per commodity into one series, or train
-separate models per variety, is still an open architectural call — it changes the total
-model count and how granular the per-mandi signal actually is. Resolve this before
-Section 4 (ML Core) training begins.
+3.0's gotcha). Three options were considered: (1) keep one variety per series,
+dropping others; (2) train separate models per variety; (3) average modal prices
+across all varieties per (commodity, market, date) to produce a single daily price.
+**Option 3 was adopted.** Option 1 is arbitrary (the choice of "which variety" wastes
+data); Option 2 fails because variety names are inconsistent across markets and over
+time, producing fragmented series too short for Prophet. Option 3 gives the longest
+possible series per (commodity, market) pair. Known limitation: for commodities with
+genuine grade splits (Onion 1st/2nd sort, Coconut Big/Medium/Small), the averaged
+series can shift if the reported grade mix changes over time even when the underlying
+price trend has not changed. This is acknowledged in the report's limitations section.
 
 ### 3.4 Ingestion script (concept)
 ```python
@@ -348,15 +354,23 @@ accuracy against your regression-derived signal. Not required, but shows breadth
 you have spare time.
 
 ### 4.1 Feature/data prep
-Per (commodity, mandi, **variety**) triple, build a time series of `(date, modal_price)`.
-Filtering to one consistent variety matters — see section 3.0's gotcha about multiple
-varieties per market/day. Prophet wants exactly two columns named `ds` and `y`:
+Per (commodity, mandi) pair, build a time series of `(date, modal_price)` by averaging
+across all varieties on each date (Section 3.3.1 variety decision). Prophet wants
+exactly two columns named `ds` and `y`:
 
 ```python
-df = df[df["variety"] == chosen_variety]          # avoid mixing varieties, see 3.0
+# variety averaging (decided in 3.3.1 — do NOT filter to one variety)
+df = (df.groupby(["arrival_date"])["modal_price"].mean().reset_index())
 df = df.rename(columns={"arrival_date": "ds", "modal_price": "y"})
 df["ds"] = pd.to_datetime(df["ds"])
 ```
+
+**Precomputed forecasts (decided during implementation):** forecasts are generated
+once by `ml/generate_forecasts.py` and stored in the `forecasts` table. The backend's
+`/forecast` endpoint does a plain `SELECT` from that table — it does **not** load a
+`.pkl` file and call `model.predict()` on every request. This avoids per-request model
+load latency and keeps the API stateless. Run `generate_forecasts.py` after every
+`train.py` run to keep forecasts fresh.
 
 Optional extra regressors if you want to go further: `min_price`, `max_price` spread
 (a proxy for volatility), day-of-week (Prophet already models weekly seasonality
@@ -565,10 +579,21 @@ def get_forecast(commodity: str, market: str):
         "signal": compute_sell_hold_signal(...)
     }
 
+@app.get("/history")
+def get_history(commodity: str, market: str):
+    # returns variety-averaged daily modal_price for the full historical range
+    # used by the frontend to draw the full price history chart (Jan 2024 → last date)
+    # before the 7-day forecast band is overlaid
+    ...
+
 @app.get("/compare")
 def compare_mandis(commodity: str, state: str):
     ...  # latest modal_price per market within that state, for the drill-down map view
 ```
+
+**Note:** `/forecast` does a plain `SELECT` from the `forecasts` table (precomputed by
+`generate_forecasts.py`) — it does not load a `.pkl` and call `.predict()` live.
+See Section 4.1 for the precompute decision.
 Run locally with `uvicorn backend.main:app --reload`. FastAPI gives you free
 interactive API docs at `/docs` — useful to demo to evaluators directly.
 
@@ -606,23 +631,22 @@ frontend/src/pages/Prediction.jsx
 ```
 Two-pane layout:
 
-- **Left pane — clickable India map.** Built with `react-simple-maps` + an
-  India-states TopoJSON file. Each state is a clickable shape; clicking sets the
-  selected state in React state (`useState`) and triggers a fetch to
-  `/states/{state}/top-crops` and `/states/{state}/summary`.
-- **Right pane — top 6 crops for the selected state**, each shown as a card with:
-  the commodity name, the **aggregated** % change (Section 4.5 — averaged across that
-  state's reporting mandis, not a separately trained state model), and an up/down
-  indicator (color-coded, e.g. green for price rising / good time to hold, red for
-  falling / consider selling).
-- **Drill-down (click a crop card):** navigates to a detail view showing the *real*
-  per-mandi breakdown for that (state, commodity) — a small map or table comparing
-  mandis within that state (`/compare` endpoint), each with its own Sell/Hold badge
-  from its own individually-trained model (Section 4.4). This is where the original
-  "compare nearby mandis" feature actually lives — the state screen before it is just
-  a summary layer.
+- **State selector** — a dropdown (not a clickable SVG map; `react-simple-maps` was
+  removed during implementation). Selecting a state triggers a fetch to
+  `/states/{state}/top-crops`. The list of states and their top crops is effectively
+  hardcoded to the 18 finalized combinations (Section 3.3.1) — the `state_top_crops`
+  config was seeded once from the data-driven ranking and is not recomputed dynamically.
+- **Crop selector** — a second dropdown populated from the selected state's top 6 crops.
+- **Market selector** — a third dropdown populated from `/forecast?commodity=...` markets
+  available for that (state, crop) pair.
+- **Forecast view** — after all three are selected, displays:
+  - A full price history chart (Jan 2024 → last observation date) with the 7-day
+    Prophet forecast and confidence band overlaid (`recharts`), pulling history from
+    `/history` and forecast from `/forecast`
+  - A tabular view toggle showing the 7-day forecast rows with SELL/HOLD badges
+  - A prominent "Historical demo — Data as of 29 Dec 2025" banner throughout
 
-### 7.3 Suggested component structure
+### 7.3 Actual component structure (as built)
 ```
 frontend/src/
 ├── pages/
@@ -633,24 +657,18 @@ frontend/src/
 │   ├── AllIndiaDashboard.jsx
 │   ├── FeedbackSection.jsx
 │   ├── TeamSection.jsx
-│   ├── IndiaMap.jsx            # react-simple-maps wrapper
-│   ├── StateCropCard.jsx       # one of the top-6 crop cards
-│   ├── MandiCompareView.jsx    # drill-down: per-mandi map/table + Sell/Hold
-│   └── ForecastChart.jsx       # recharts price + forecast band chart
+│   ├── ForecastChart.jsx       # recharts: full history + 7-day forecast band
+│   └── ForecastTable.jsx       # tabular view toggle with SELL/HOLD badges
 ├── api/
 │   └── client.js               # fetch wrappers to the FastAPI backend
 └── App.jsx                     # react-router-dom routes
 ```
 
-This satisfies your original brief well: live data → interactive dashboard that
-*explains* the prediction → usable by a non-technical farmer, now matching your actual
-two-page UI vision end to end.
-
-**Mandi coordinates note:** the Agmarknet dataset doesn't include lat/long. For the
-~20–30 mandis you scope to per state, build a small static CSV mapping market name →
-coordinates once (geocode manually or via a free geocoding API) rather than trying to
-solve this for all 3,000+ mandis. The India-states TopoJSON for the left-pane map is a
-separate, off-the-shelf file — you don't need to build that part yourself.
+**Note:** `IndiaMap.jsx` / `react-simple-maps` was removed — the Prediction page uses
+a three-dropdown navigator (state → crop → market) instead of a clickable SVG map.
+The map approach was deprioritized to stay within the project timeline; the dropdown
+UI covers the full (state, crop, market) selection flow the original map was meant to
+drive.
 
 ---
 
@@ -704,16 +722,16 @@ mandi-price-advisor/
 
 | Phase | Weeks | Deliverable |
 |---|---|---|
-| 1 | 1–2 | ✅ **Done (11 Sep 2026)** — Supabase connection verified via `db.py`, normalized schema (single `price_records` fact table, `state_id` indexed — not state-partitioned), Kaggle parquet historical backfill loaded and validated: 1,185,657 rows across 3 states, 2024-01-01 to 2025-12-29 (Section 3.3.2). Live ingestion script (`fetch_agmarknet.py`) still pending. |
-| 2 | 3 | ✅ **Done** — Data-driven **top-6-crops-per-state** selection finalized (Section 3.3.1) |
-| 3 | 4 | Prophet model + naive baseline **per (commodity, mandi)**, MAE comparison report |
-| 4 | 5 | Sell/Hold logic finalized, tested against historical "what would we have told the farmer" cases |
-| 5 | 6 | Retraining pipeline + model registry; state-aggregation logic (Section 4.5) built and unit-tested |
-| 6 | 7 | FastAPI backend: per-mandi endpoints + state-summary/top-crops endpoints |
-| 7 | 8 | React frontend: Home page (hero, all-India dashboard, feedback, team) |
-| 8 | 9 | React frontend: Prediction page (clickable India map → top 6 crops → per-mandi drill-down) |
-| 9 | 10 | Automate via GitHub Actions, deploy (Vercel + Render + Supabase) |
-| 10 | 11–12 | Polish, documentation, report, presentation rehearsal |
+| 1 | 1–2 | ✅ **Done (11 Sep 2026)** — Supabase schema, Kaggle backfill: 1,185,657 rows, 3 states, 2024-01-01 to 2025-12-29 (Section 3.3.2) |
+| 2 | 3 | ✅ **Done** — Data-driven top-6-crops-per-state finalized (Section 3.3.1); variety averaging decided |
+| 3 | 4 | ✅ **Done** — 2,347 Prophet models trained; rolling 3-window MAE evaluation vs naive baseline (1,208 evaluated pairs; Prophet wins 240/1,208) |
+| 4 | 5 | ✅ **Done** — Sell/Hold rule: >2% upward forecast vs last known price → HOLD, else SELL |
+| 5 | 6 | ✅ **Done** — `generate_forecasts.py` precomputes 17,451 forecast rows (1,413 SELL / 1,080 HOLD); model registry populated |
+| 6 | 7 | ✅ **Done** — FastAPI backend: 5 endpoints (`/states`, `/states/{state}/top-crops`, `/states/{state}/summary`, `/forecast`, `/history`, `/compare`) |
+| 7 | 8 | ✅ **Done** — React frontend: Home page (hero, dashboard, feedback, team) |
+| 8 | 9 | ✅ **Done** — React frontend: Prediction page (state → crop → market dropdowns → recharts history + forecast chart + table with SELL/HOLD badges) |
+| 9 | 10 | ⚠️ **Partial** — Live ingestion pipeline designed; not operationally deployed (Agmarknet API unreliable from cloud runners — future scope) |
+| 10 | 11–12 | ✅ **Done** — Documentation updated, report chapters written, working local demo |
 
 **Scope control (finalized):** **3 states — Tamil Nadu, Uttar Pradesh, Maharashtra —
 6 data-driven crops each (18 total, Section 3.3.1), ~15–20 mandis per state**. Expanding

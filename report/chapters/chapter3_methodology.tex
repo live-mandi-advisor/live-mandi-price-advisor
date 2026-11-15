@@ -76,28 +76,38 @@ reporting-consistency ranking on the 2024+2025 backfill data.}
 \end{longtable}
 
 \subsection{Live Ingestion}
-A scheduled job (GitHub Actions cron) fetches the previous day's records
-from the Agmarknet API (resource ID
-\texttt{9ef84268-d588-465a-a308-a864a43d0070}) and appends them to the
-same state-partitioned tables used by the historical backfill, so that
-the model's training set grows continuously.
+A scheduled job (GitHub Actions cron) was designed to fetch the previous
+day's records from the Agmarknet API (resource ID
+\texttt{9ef84268-d588-465a-a308-a864a43d0070}) and append them to the
+database, so that the model's training set would grow continuously.
+However, during implementation the live API proved unreliable from cloud
+runners -- intermittent connectivity failures and unpredictable response
+formats prevented consistent automated ingestion within the project
+timeline. The live ingestion pipeline therefore remains a future-scope
+component (see Chapter~5); the working demonstration uses only the
+2024--2025 historical backfill.
 
-\subsection{Data Cleaning Considerations}
-Preliminary analysis of a sample Agmarknet export surfaced two practical
-issues that the ingestion pipeline must handle:
-\begin{itemize}
-    \item \textbf{Field-name encoding.} Exported column names contain an
-    XML-encoding artefact (e.g.\ \texttt{Min\_x0020\_Price}) rather than
-    the clean \texttt{min\_price} field name returned by the JSON API;
-    the pipeline must normalize this during ingestion.
-    \item \textbf{Variety/grade duplication.} A single (market, commodity,
-    date) combination can have multiple rows if more than one
-    variety/grade of that commodity was traded that day (confirmed
-    empirically, e.g. multiple \textit{Arecanut} rows at the same market
-    on the same day with different modal prices). The pipeline filters to
-    a consistent variety/grade per (commodity, mandi) series before
-    constructing the Prophet training set.
-\end{itemize}
+\subsection{Variety Handling Decision}
+\label{sec:variety}
+A single (market, commodity, date) combination can have multiple rows if
+more than one variety or grade of that commodity was traded that day
+(confirmed empirically, e.g.\ multiple Onion variety rows at the same
+market on the same date with different modal prices). Three options were
+considered: (1) keep one variety per series, dropping others; (2) model
+each variety as a separate series with its own Prophet model; (3) average
+modal prices across all varieties per (commodity, market, date) to
+produce a single daily price.
+
+Option (3) was adopted. Options (1) and (2) were rejected because: (1)
+the choice of ``which variety to keep'' is arbitrary and wastes data, and
+(2) variety names are not consistent across markets and over time,
+producing fragmented series too short for Prophet.
+
+\textbf{Known limitation:} for commodities with genuine grade
+splits -- Onion (1st/2nd sort), Coconut (Big/Medium/Small), named wheat
+cultivars -- the averaged series can shift if the reported grade mix
+changes over time, even when the underlying price trend has not changed.
+This is acknowledged in Chapter~5.
 
 \section{Machine Learning Design}
 \subsection{Task Formulation}
@@ -143,9 +153,8 @@ Live data source & data.gov.in Agmarknet API & Free, structured, government-main
 Forecasting model & Facebook Prophet & Handles small per-mandi series well; minimal tuning \\
 Baseline model & Naive / moving average (scikit-learn) & Enables an evidence-based accuracy comparison \\
 Backend & FastAPI (Python) & Lightweight, async, auto-documented REST API \\
-Database & SQLite (dev) / Supabase Postgres (prod) & Free hosting; state-partitioned schema \\
-Frontend & React (Vite) & Required for interactive, clickable India map \\
-Mapping & react-simple-maps + TopoJSON & Standard approach for clickable choropleth/state maps \\
+Database & Supabase Postgres & Free hosting; normalized relational schema \\
+Frontend & React (Vite) & Interactive multi-step state/crop/market explorer \\
 Charting & recharts & React-native price/forecast visualization \\
 Scheduling & GitHub Actions & Free CI/CD-based cron scheduling \\
 Deployment & Vercel/Netlify (frontend), Render (backend), Supabase (DB) & All free-tier, standard for student deployment \\
