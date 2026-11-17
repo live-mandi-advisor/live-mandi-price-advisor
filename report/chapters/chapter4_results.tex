@@ -206,6 +206,58 @@ history chart (Jan 2024 to the market's last observation date, with the
 view with SELL/HOLD badges. All forecasts display a prominent
 ``Historical demo -- Data as of 29 Dec 2025'' banner.
 
+\section{System Screenshots}
+The following figures show the working web application as demonstrated
+locally. All screens display the ``Historical demonstration -- Data as
+of 29 Dec 2025'' banner, clearly disclosing the data limitation to the
+user.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{images/screen_home_hero.png}
+\caption{Home page -- hero section: project tagline and primary call-to-action.}
+\label{fig:screen_hero}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{images/screen_home_features.png}
+\caption{Home page -- feature cards summarising the system's three core capabilities.}
+\label{fig:screen_features}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{images/screen_forecast_step1.png}
+\caption{Prediction page -- Step 1: state selection cards (Tamil Nadu, Uttar Pradesh, Maharashtra).}
+\label{fig:screen_step1}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{images/screen_forecast_step23.png}
+\caption{Prediction page -- Steps 2 and 3: crop tab selection (Bengal Gram highlighted) and market dropdown.}
+\label{fig:screen_step23}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{images/screen_forecast_chart_hold.png}
+\caption{Prediction page -- forecast chart view: Arvi market, Bengal Gram (Whole), Maharashtra.
+Full price history (Jan 2024 -- Oct 2025) with 7-day Prophet forecast (dashed green) and
+confidence band. HOLD signal shown; tooltip displays forecast price and confidence interval
+for the selected date.}
+\label{fig:screen_chart_hold}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{images/screen_forecast_table_sell.png}
+\caption{Prediction page -- forecast table view: Chikali market, Bengal Gram (Whole), Maharashtra.
+7-day forecast rows with predicted price, confidence bounds, and SELL signal badge.}
+\label{fig:screen_table_sell}
+\end{figure}
+
 \section{Discussion}
 The implementation validated several Chapter~3 design decisions against
 real data: the hierarchical lookup-ID mapping was necessary in practice
